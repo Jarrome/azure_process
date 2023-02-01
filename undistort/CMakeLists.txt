@@ -5,6 +5,8 @@ endif(COMMAND cmake_policy)
 
 find_package(k4a REQUIRED)
 find_package(k4arecord REQUIRED)
+#add_library(libturbojpeg SHARED /mnt/yijun2/home/yijun/Desktop/tools/azure_tools/libjpeg-turbo/build/libturbojpeg.so)
+#find_package(turbojpeg REQUIRED)
 
 
 
@@ -22,7 +24,8 @@ add_executable(process
 target_link_libraries(process PRIVATE
     k4a::k4a
     k4a::k4arecord
-    # libjpeg-turbo::libjpeg-turbo
+    /mnt/yijun2/home/yijun/Desktop/tools/azure_tools/libjpeg-turbo/build/libturbojpeg.so
+    #libjpeg-turbo::libjpeg-turbo
     )
 
 target_link_libraries(undistort_cap PRIVATE

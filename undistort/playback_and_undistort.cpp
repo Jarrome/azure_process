@@ -42,18 +42,28 @@ static void print_capture_info(recording_t *file)
     printf("\n");
 }
 
-/*
-bool MGPG2BGRA(const k4a_image_t &mjpg_im, k4a_image_t &bgra_im){
+bool MJPG2BGRA(const k4a_image_t &mjpg_im, k4a_image_t &bgra_im){
 
-k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32,
-	     mjpg_im.get_width_pixels(),
-	     mjpg_im.get_height_pixels(),
-	     mjpg_im.get_width_pixels() * 4 * (int)sizeof(uint8_t),
-	     &bgra_im);
-
+	k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32,
+		     k4a_image_get_width_pixels(mjpg_im),
+		     k4a_image_get_height_pixels(mjpg_im),
+		     k4a_image_get_width_pixels(mjpg_im) * 4 * (int)sizeof(uint8_t),
+		     &bgra_im);
+	tjhandle m_decompressor;
+	m_decompressor = tjInitDecompress();
+	const int decompressStatus = tjDecompress2(m_decompressor,
+			k4a_image_get_buffer(mjpg_im),
+			static_cast<unsigned long>(k4a_image_get_size(mjpg_im)),
+			k4a_image_get_buffer(bgra_im),
+			k4a_image_get_width_pixels(mjpg_im),
+			0,
+			k4a_image_get_height_pixels(mjpg_im),
+			TJPF_BGRA,
+			TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE);
+	(void) tjDestroy(m_decompressor);
+	return true;
 
 }
-*/
 
 int main(int argc, char **argv)
 {
@@ -68,7 +78,9 @@ int main(int argc, char **argv)
 
 pinhole_t pinhole;
 k4a_image_t depth_image = NULL;
-k4a_image_t color_image = NULL;
+k4a_image_t compressed_color_image = NULL;
+k4a_image_t color_image;
+
 k4a_image_t ir_image = NULL;
 
 k4a_image_t transformed_depth_image = NULL;
@@ -162,7 +174,11 @@ create_undistortion_lut(&calibration, K4A_CALIBRATION_TYPE_COLOR, &pinhole, lut,
 
 for(int i=0; i<4000;i++){
     depth_image = k4a_capture_get_depth_image(files[0].capture);
-    color_image = k4a_capture_get_color_image(files[0].capture);
+    compressed_color_image = k4a_capture_get_color_image(files[0].capture);
+	//decompress mjpg to bgra
+    MJPG2BGRA(compressed_color_image, color_image);
+	
+
     ir_image = k4a_capture_get_ir_image(files[0].capture);
 
 ir_image_width_pixels = k4a_image_get_width_pixels(ir_image);
@@ -238,13 +254,10 @@ if (K4A_RESULT_SUCCEEDED !=
 			     pinhole.width * (int)sizeof(uint16_t),
 			     &undistorted_ir);
 
-	std::cout << "1" << std::flush;
-	//remap_color(color_image, lut, undistorted_color, interpolation_type);
-std::cout << "2" << std::flush;
+	remap_color(color_image, lut, undistorted_color, interpolation_type);
 	remap(transformed_depth_image, lut, undistorted_depth, interpolation_type);
-std::cout << "3" << std::flush;
 	remap(transformed_ir_image, lut, undistorted_ir, interpolation_type);
-std::cout << "4" << std::flush;
+
 
 
 
