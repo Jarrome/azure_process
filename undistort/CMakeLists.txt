@@ -6,7 +6,9 @@ endif(COMMAND cmake_policy)
 find_package(k4a REQUIRED)
 find_package(k4arecord REQUIRED)
 #add_library(libturbojpeg SHARED /mnt/yijun2/home/yijun/Desktop/tools/azure_tools/libjpeg-turbo/build/libturbojpeg.so)
-#find_package(turbojpeg REQUIRED)
+find_package(OpenCV REQUIRED)
+INCLUDE_DIRECTORIES( ${OpenCV_INCLUDE_DIRS} )
+
 
 
 
@@ -25,6 +27,7 @@ target_link_libraries(process PRIVATE
     k4a::k4a
     k4a::k4arecord
     /mnt/yijun2/home/yijun/Desktop/tools/azure_tools/libjpeg-turbo/build/libturbojpeg.so
+    ${OpenCV_LIBS}
     #libjpeg-turbo::libjpeg-turbo
     )
 

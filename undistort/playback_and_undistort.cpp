@@ -6,8 +6,11 @@
 #include "depthir_to_color_and_undist.h"
 
 #include <turbojpeg.h>
-//#include <opencv2/core/core.hpp>
-//#include <opencv2/highgui/highgui.hpp>
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/calib3d.hpp>
 
 typedef struct
 {
@@ -114,7 +117,6 @@ interpolation_t IR_interpolation = INTERPOLATION_BILINEAR_DEPTH;
     k4a_image_t lut = NULL;
 
 
-//cv::Mat depth_cv, color_cv, ir_cv;
 
 
 
@@ -258,6 +260,34 @@ if (K4A_RESULT_SUCCEEDED !=
 	remap(transformed_depth_image, lut, undistorted_depth, interpolation_type);
 	remap(transformed_ir_image, lut, undistorted_ir, interpolation_type);
 
+
+	//save image
+	cv::Mat depth_cv_(k4a_image_get_height_pixels(undistorted_depth),k4a_image_get_width_pixels(undistorted_depth),
+			CV_8UC1,
+			(void*)k4a_image_get_buffer(undistorted_depth),
+			cv::Mat::AUTO_STEP);
+	cv::Mat ir_cv_(k4a_image_get_height_pixels(undistorted_ir),k4a_image_get_width_pixels(undistorted_ir),
+			CV_8UC1,
+			(void*)k4a_image_get_buffer(undistorted_ir),
+			cv::Mat::AUTO_STEP);
+	cv::Mat color_cv_(k4a_image_get_height_pixels(undistorted_color),k4a_image_get_width_pixels(undistorted_color),
+			CV_8UC4,
+			(void*)k4a_image_get_buffer(undistorted_color),
+			cv::Mat::AUTO_STEP);
+	/*
+		cv::imshow("depth", depth_cv_);
+		cv::imshow("color", color_cv_);
+		cv::imshow("ir", ir_cv_);
+		cv::waitKey();
+	*/
+
+	cv::imwrite("depth.jpg", depth_cv_);
+	cv::imwrite("color.jpg", color_cv_);
+	cv::imwrite("ir.jpg", ir_cv_);
+
+	depth_cv_.release();
+	color_cv_.release();
+	ir_cv_.release();
 
 
 
