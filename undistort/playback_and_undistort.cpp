@@ -75,6 +75,7 @@ int main(int argc, char **argv)
 std::string depth_folder="seq0/depth/";
 std::string color_folder="seq0/color/";
 std::string ir_folder="seq0/ir/";
+std::string intrin_file="seq0/intrinsic.txt";
 
     size_t file_count = 1; 
     k4a_result_t result = K4A_RESULT_SUCCEEDED;
@@ -97,7 +98,6 @@ k4a_image_t undistorted_ir = NULL;
 
 k4a_transformation_t transformation = NULL;
 k4a_image_t custom_ir_image = NULL;
-k4a_image_t custom_depth_image = NULL;
 
 int ir_image_width_pixels;// = k4a_image_get_width_pixels(ir_image);
 int ir_image_height_pixels;// = k4a_image_get_height_pixels(ir_image);
@@ -164,6 +164,11 @@ k4a_playback_get_calibration(files[0].handle, &calibration))
 printf("Failed to get calibration\n");
 return 1;
 }
+// transform to color coordinate
+//
+transformation = k4a_transformation_create(&calibration);
+
+
 
 // Generate a pinhole model for color camera
 pinhole = create_pinhole_from_xy_range(&calibration, K4A_CALIBRATION_TYPE_COLOR);
@@ -176,6 +181,20 @@ k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM16,
 
 create_undistortion_lut(&calibration, K4A_CALIBRATION_TYPE_COLOR, &pinhole, lut, interpolation_type);
 
+// write intrinsic
+std::ofstream out(intrin_file);
+auto *coutbuf = std::cout.rdbuf();
+std::cout.rdbuf(out.rdbuf());
+std::cout << calibration.color_camera_calibration.intrinsics.parameters.param.fx << " "
+<< calibration.color_camera_calibration.intrinsics.parameters.param.fy << " "
+<< calibration.color_camera_calibration.intrinsics.parameters.param.cx << " "
+<< calibration.color_camera_calibration.intrinsics.parameters.param.cy << " "
+<< std::endl;
+/** reset cout buffer **/
+std::cout.rdbuf(coutbuf);
+
+
+// loop
 for(int i=0; i<4000;i++){
     depth_image = k4a_capture_get_depth_image(files[0].capture);
     compressed_color_image = k4a_capture_get_color_image(files[0].capture);
@@ -219,11 +238,7 @@ if (K4A_RESULT_SUCCEEDED !=
 			pinhole.width * (int)sizeof(uint16_t),
 		     &transformed_ir_image);
 
-	// transform to color coordinate
-	//
-	transformation = k4a_transformation_create(&calibration);
-
-
+	
 	if (K4A_RESULT_SUCCEEDED !=
 		k4a_transformation_depth_image_to_color_camera_custom(transformation,
 		depth_image,
@@ -237,9 +252,6 @@ if (K4A_RESULT_SUCCEEDED !=
 	return false;
 	}
 
-
-	using namespace std::chrono_literals;
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	// undistort
 	k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32,
@@ -301,15 +313,23 @@ cv::minMaxLoc( depth_cv_, &minVal, &maxVal, &minLoc, &maxLoc );
 	cv::imwrite(depth_folder+img_str, depth_cv_);
 	cv::imwrite(color_folder+img_str, color_cv_);
 	cv::imwrite(ir_folder+img_str, ir_cv_);
-	std::cout << "saved" << i << std::endl;
+	std::cout << "saved " << i << std::endl;
 
 
 
 	depth_cv_.release();
 	color_cv_.release();
 	ir_cv_.release();
-
-
+	k4a_image_release(undistorted_color);
+	k4a_image_release(undistorted_depth);
+	k4a_image_release(undistorted_ir);
+	k4a_image_release(color_image);
+	k4a_image_release(depth_image);
+	k4a_image_release(ir_image);
+	k4a_image_release(transformed_depth_image);
+	k4a_image_release(transformed_ir_image);
+	k4a_image_release(compressed_color_image);
+	k4a_image_release(custom_ir_image);
 
 	//print_capture_info(files);
 	stream_result = k4a_playback_get_next_capture(files[0].handle, &files[0].capture);
