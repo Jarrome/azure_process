@@ -45,16 +45,14 @@ static void print_capture_info(recording_t *file)
     printf("\n");
 }
 
-bool MJPG2BGRA(const k4a_image_t &mjpg_im, k4a_image_t &bgra_im){
+bool MJPG2BGRA(tjhandle& m_decompressor, const k4a_image_t &mjpg_im, k4a_image_t &bgra_im){
 
 	k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32,
 		     k4a_image_get_width_pixels(mjpg_im),
 		     k4a_image_get_height_pixels(mjpg_im),
 		     k4a_image_get_width_pixels(mjpg_im) * 4 * (int)sizeof(uint8_t),
 		     &bgra_im);
-	tjhandle m_decompressor;
-	m_decompressor = tjInitDecompress();
-	const int decompressStatus = tjDecompress2(m_decompressor,
+		const int decompressStatus = tjDecompress2(m_decompressor,
 			k4a_image_get_buffer(mjpg_im),
 			static_cast<unsigned long>(k4a_image_get_size(mjpg_im)),
 			k4a_image_get_buffer(bgra_im),
@@ -63,7 +61,6 @@ bool MJPG2BGRA(const k4a_image_t &mjpg_im, k4a_image_t &bgra_im){
 			k4a_image_get_height_pixels(mjpg_im),
 			TJPF_BGRA,
 			TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE);
-	(void) tjDestroy(m_decompressor);
 	return true;
 
 }
@@ -75,6 +72,9 @@ int main(int argc, char **argv)
         printf("Usage: playback_external_sync.exe <master.mkv>\n");
         return 1;
     }
+std::string depth_folder="seq0/depth/";
+std::string color_folder="seq0/color/";
+std::string ir_folder="seq0/ir/";
 
     size_t file_count = 1; 
     k4a_result_t result = K4A_RESULT_SUCCEEDED;
@@ -113,6 +113,9 @@ interpolation_t depth_interpolation = INTERPOLATION_NEARESTNEIGHBOR;
 interpolation_t color_interpolation = INTERPOLATION_BILINEAR;
 interpolation_t IR_interpolation = INTERPOLATION_BILINEAR_DEPTH;
 */
+tjhandle m_decompressor;
+m_decompressor = tjInitDecompress();
+
 
     k4a_image_t lut = NULL;
 
@@ -162,7 +165,7 @@ printf("Failed to get calibration\n");
 return 1;
 }
 
-// Generate a pinhole model for depth camera
+// Generate a pinhole model for color camera
 pinhole = create_pinhole_from_xy_range(&calibration, K4A_CALIBRATION_TYPE_COLOR);
 k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM16,
 	     pinhole.width,
@@ -173,12 +176,11 @@ k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM16,
 
 create_undistortion_lut(&calibration, K4A_CALIBRATION_TYPE_COLOR, &pinhole, lut, interpolation_type);
 
-
 for(int i=0; i<4000;i++){
     depth_image = k4a_capture_get_depth_image(files[0].capture);
     compressed_color_image = k4a_capture_get_color_image(files[0].capture);
 	//decompress mjpg to bgra
-    MJPG2BGRA(compressed_color_image, color_image);
+    MJPG2BGRA(m_decompressor, compressed_color_image, color_image);
 	
 
     ir_image = k4a_capture_get_ir_image(files[0].capture);
@@ -279,11 +281,29 @@ if (K4A_RESULT_SUCCEEDED !=
 		cv::imshow("color", color_cv_);
 		cv::imshow("ir", ir_cv_);
 		cv::waitKey();
-	*/
 
-	cv::imwrite("depth.jpg", depth_cv_);
-	cv::imwrite("color.jpg", color_cv_);
-	cv::imwrite("ir.jpg", ir_cv_);
+double minVal;
+double maxVal;
+cv::Point minLoc;
+cv::Point maxLoc;
+
+cv::minMaxLoc( depth_cv_, &minVal, &maxVal, &minLoc, &maxLoc );
+
+	std::cout << minVal<<" "<<maxVal << std::endl;
+
+	cv::imwrite("depth.png", depth_cv_);
+	cv::imwrite("color.png", color_cv_);
+	cv::imwrite("ir.png", ir_cv_);
+	*/
+	char image_id_str[10];
+	sprintf(image_id_str,"%06d.png",i);
+	std::string img_str (image_id_str);
+	cv::imwrite(depth_folder+img_str, depth_cv_);
+	cv::imwrite(color_folder+img_str, color_cv_);
+	cv::imwrite(ir_folder+img_str, ir_cv_);
+	std::cout << "saved" << i << std::endl;
+
+
 
 	depth_cv_.release();
 	color_cv_.release();
@@ -291,10 +311,11 @@ if (K4A_RESULT_SUCCEEDED !=
 
 
 
-	print_capture_info(files);
+	//print_capture_info(files);
 	stream_result = k4a_playback_get_next_capture(files[0].handle, &files[0].capture);
 }
 
+(void) tjDestroy(m_decompressor);
 
 
 
