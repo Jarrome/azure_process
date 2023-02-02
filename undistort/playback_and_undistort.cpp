@@ -148,7 +148,7 @@ if (result != K4A_RESULT_SUCCEEDED)
 }
 k4a_stream_result_t stream_result;
 // preload 20 frames for fear has depth but color is NULL
-for(int i=0; i<20; i++){
+for(int i=0; i<2; i++){
 	std::cout << i;
 stream_result = k4a_playback_get_next_capture(files[0].handle, &files[0].capture);
 }
@@ -263,11 +263,11 @@ if (K4A_RESULT_SUCCEEDED !=
 
 	//save image
 	cv::Mat depth_cv_(k4a_image_get_height_pixels(undistorted_depth),k4a_image_get_width_pixels(undistorted_depth),
-			CV_8UC1,
+			CV_16UC1,
 			(void*)k4a_image_get_buffer(undistorted_depth),
 			cv::Mat::AUTO_STEP);
 	cv::Mat ir_cv_(k4a_image_get_height_pixels(undistorted_ir),k4a_image_get_width_pixels(undistorted_ir),
-			CV_8UC1,
+			CV_16UC1,
 			(void*)k4a_image_get_buffer(undistorted_ir),
 			cv::Mat::AUTO_STEP);
 	cv::Mat color_cv_(k4a_image_get_height_pixels(undistorted_color),k4a_image_get_width_pixels(undistorted_color),
